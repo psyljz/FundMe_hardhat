@@ -1,0 +1,41 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/FundMe.sol": {
+      "content": "// SPDX-License-Identifier:MIT\npragma solidity ^0.8.7;\nimport \"./PriceConverter.sol\";\n\nerror FundMe_NotOwner();\n\n/** @title A  contract for crowd funding\n *  @author liujingze\n *  @notice\n *  @dev this implements\n *\n */\ncontract FundMe {\n    //Type\n    using PriceConverter for uint256;\n\n    // Sate variables\n    uint256 public constant MINMUM_USD = 10;\n\n    address immutable i_owner;\n\n    AggregatorV3Interface public priceFeed;\n\n    constructor(address priceFeedAddress) {\n        i_owner = msg.sender;\n        priceFeed = AggregatorV3Interface(priceFeedAddress);\n    }\n\n    address[] public fonder;\n    mapping(address => uint256) public founderList;\n\n    function fund() public payable {\n        // set a minimm fund\n        // number=5;\n\n        require(\n            msg.value.getETHconversion(priceFeed) > MINMUM_USD,\n            \"Didn't send enoug ETH\"\n        );\n        fonder.push(msg.sender);\n\n        founderList[msg.sender] += msg.value;\n    }\n\n    receive() external payable {\n        fund();\n    }\n\n    fallback() external payable {\n        fund();\n    }\n\n    modifier onlyOwer() {\n        // 节约gas\n        if (msg.sender != i_owner) {\n            revert FundMe_NotOwner();\n        }\n        _;\n    }\n\n    function withdraw() public onlyOwer {\n        for (\n            uint256 founderindex = 0;\n            founderindex < fonder.length;\n            founderindex++\n        ) {\n            address founderAddress = fonder[founderindex];\n\n            founderList[founderAddress] = 0;\n        }\n\n        fonder = new address[](0);\n\n        //transfer\n\n        // payable(msg.sender).transfer(address(this).balance);\n        // bool sendSucuss = payable(msg.sender).send(address(this).balance);\n        // require(sendSucuss,\"send failed\");\n        (bool callSucuss, ) = payable(msg.sender).call{\n            value: address(this).balance\n        }(\"\");\n        require(callSucuss, \"call failed\");\n    }\n\n        \n}\n"
+    },
+    "contracts/PriceConverter.sol": {
+      "content": "// SPDX-License-Identifier:MIT\n\n// 声明编译器版本\n//  ^ \n// \n\n// 从npm中导入包\n// @chainlink\n\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\npragma solidity ^0.8.7;\n\nlibrary PriceConverter{\n\n     function getLatestPrice(AggregatorV3Interface priceFeed) internal view returns (uint256) {\n\n     \n            \n        (\n            /*uint80 roundID*/,\n            int price,\n            /*uint startedAt*/,\n            /*uint timeStamp*/,\n            /*uint80 answeredInRound*/\n        ) = priceFeed.latestRoundData();\n\n        return uint256(price)*1E10;\n    }\n\n    function getETHconversion(uint256 ETHamount ,AggregatorV3Interface priceFeed)internal view returns(uint256){\n        \n \n        uint amount = ETHamount*getLatestPrice(priceFeed) /1E18;\n\n        return amount /1E18;\n\n\n    }\n\n\n}"
+    },
+    "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface AggregatorV3Interface {\n  function decimals() external view returns (uint8);\n\n  function description() external view returns (string memory);\n\n  function version() external view returns (uint256);\n\n  function getRoundData(uint80 _roundId)\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n\n  function latestRoundData()\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
